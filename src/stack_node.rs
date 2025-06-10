@@ -23,6 +23,9 @@ impl StackNode {
     pub fn get_duration(&self) -> Duration{
         return self.value;
     }
+    pub fn get_name(&self) -> String{
+        return self.id.clone();
+    }
 }
 
 impl fmt::Display for StackNode {

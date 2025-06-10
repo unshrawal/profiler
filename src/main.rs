@@ -2,6 +2,9 @@ mod profiler;
 mod stack_node;
 use std::result::Result::{Ok, Err};
 use std::env;
+use std::thread::sleep;
+use std::time::Duration;
+use anyhow::Error;
 use profiler::Profiler;
 use std::collections::{HashSet};
 use std::process::Command;
@@ -20,9 +23,9 @@ fn main(){
     let mut set: HashSet<String> = HashSet::new();
     //set.insert("func1".to_string());
 
-
-    let mut profiler = Profiler::new(set, pid).unwrap();
-    let _ = profiler.run_sampling_loop(5);
+    sleep(Duration::from_millis(30));
+    let mut profiler = Profiler::new(set, pid).expect("Failed to create profiler");
+    let _ = profiler.run_sampling_loop(1);
     let _ = child.wait();
 
     profiler.print_tree();
