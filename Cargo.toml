@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.98"
 py-spy = "0.4.0"
+tree-ds = "0.1.6"
