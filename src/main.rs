@@ -1,4 +1,5 @@
 mod profiler;
+mod stack_node;
 use std::result::Result::{Ok, Err};
 use std::env;
 use profiler::Profiler;

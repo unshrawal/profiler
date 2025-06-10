@@ -2,18 +2,22 @@ use std::collections::{HashMap, HashSet};
 use std::{thread::sleep, time::Duration};
 use std::time::Instant;
 use py_spy::StackTrace;
-use tree_ds::prelude::{Node, Tree};
+use tree_ds::prelude::{Node, TraversalStrategy, Tree};
+
+use crate::stack_node::StackNode;
+
 pub(crate) struct Profiler{
     functions: HashSet<String>,
     process:py_spy::PythonSpy,
-    tree : Tree<String, Duration>,
+    tree : Tree<String, StackNode>,
 }
 impl Profiler{
     pub fn new(functions: HashSet<String>, pid: i32) -> Result<Self, anyhow::Error> {
         let config = py_spy::Config::default();
         let process = py_spy::PythonSpy::new(pid, &config)?;
-        let mut tree = Tree::<String, Duration>::new(Some("graph"));
-        let _ = tree.add_node(Node::new("Origin".to_owned(), Some(Duration::from_secs(0))), None);
+        let mut tree = Tree::<String, StackNode>::new(Some("graph"));
+        let node = Some(StackNode::new("Origin".to_string(), 0).expect("Error"));
+        let _ = tree.add_node(Node::new("Origin".to_string(), node), None);
         Ok(Profiler {
             functions,
             process,
@@ -46,13 +50,13 @@ impl Profiler{
                 }
                 else{
                     //Node doesn't exist
-                    let child_node = Node::new(frame.name.clone(), Some(Duration::from_secs(0)));
+                    let n = Some(StackNode::new(frame.name.clone(), 0).expect("Error"));
+                    let child_node = Node::new(frame.name.clone(), n);
                     let _ = self.tree.add_node(child_node, Some(&node.get_node_id()));
                     node = self.tree.get_node_by_id(frame_name).expect("WHAT IS HAPPENING HERE");
                 }
             }
         }
-
 
         Ok(())
     }
@@ -71,6 +75,6 @@ impl Profiler{
     }
 
     pub fn print_tree(&self){
-        println!("{:#?}", self.tree);
+        println!("{}", self.tree);
     }
 }
