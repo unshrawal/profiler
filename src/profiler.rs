@@ -1,7 +1,8 @@
+use core::panic;
 use std::collections::{HashMap, HashSet};
 use std::{thread::sleep, time::Duration};
 use std::time::Instant;
-use py_spy::StackTrace;
+use py_spy::{PythonSpy, StackTrace};
 use tree_ds::prelude::{AutomatedId, Node, TraversalStrategy, Tree};
 
 use crate::stack_node::StackNode;
@@ -13,8 +14,7 @@ pub(crate) struct Profiler{
 }
 impl Profiler{
     pub fn new(functions: HashSet<String>, pid: i32) -> Result<Self, anyhow::Error> {
-        let config = py_spy::Config::default();
-        let process = py_spy::PythonSpy::new(pid, &config)?;
+        let process = retry_profiler_latch(pid);
         let mut tree = Tree::<AutomatedId, StackNode>::new(Some("Profiling Output"));
         let node = Some(StackNode::new("Origin".to_string(), Duration::from_secs(0)).expect("Error"));
         let _ = tree.add_node(Node::new_with_auto_id(node), None);
@@ -107,4 +107,20 @@ impl Profiler{
     pub fn print_tree(&self){
         println!("{}", self.tree);
     }
+}
+
+fn retry_profiler_latch(pid: i32) -> PythonSpy{
+    sleep(Duration::from_millis(20)); //IMPORTANT
+    let config = py_spy::Config::default();
+    for _ in 1..5{
+        match py_spy::PythonSpy::new(pid, &config) {
+            Ok(process) => return process,
+            Err(e) => {
+                eprintln!("Profiler attach failed (retrying): {}", e);
+                sleep(Duration::from_millis(10));
+            }
+        }
+    }
+    
+    panic!("Failed to link to process after 5 retries");
 }

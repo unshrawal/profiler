@@ -22,8 +22,8 @@ fn main(){
     println!("Spawned python process with PID {}", pid);
     let mut set: HashSet<String> = HashSet::new();
     //set.insert("func1".to_string());
+    //set.insert("func2".to_string());
 
-    sleep(Duration::from_millis(30));
     let mut profiler = Profiler::new(set, pid).expect("Failed to create profiler");
     let _ = profiler.run_sampling_loop(1);
     let _ = child.wait();
