@@ -1,9 +1,8 @@
 use core::panic;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashSet};
 use std::{thread::sleep, time::Duration};
-use std::time::Instant;
-use py_spy::{PythonSpy, StackTrace};
-use tree_ds::prelude::{AutomatedId, Node, TraversalStrategy, Tree};
+use py_spy::{PythonSpy};
+use tree_ds::prelude::{AutomatedId, Node, Tree};
 
 use crate::stack_node::StackNode;
 
@@ -13,7 +12,10 @@ pub(crate) struct Profiler{
     tree : Tree<AutomatedId, StackNode>,
 }
 impl Profiler{
-    pub fn new(functions: HashSet<String>, pid: i32) -> Result<Self, anyhow::Error> {
+    pub fn new(functions: Option<HashSet<String>>, pid: Option<i32>) -> Result<Self, anyhow::Error> {
+        let pid = pid.unwrap_or(std::process::id() as i32);
+        let functions = functions.unwrap_or(HashSet::<String>::new());
+
         let process = retry_profiler_latch(pid);
         let mut tree = Tree::<AutomatedId, StackNode>::new(Some("Profiling Output"));
         let node = Some(StackNode::new("Origin".to_string(), Duration::from_secs(0)).expect("Error"));
@@ -68,23 +70,6 @@ impl Profiler{
                     let id = self.tree.add_node(Node::new_with_auto_id(n), Some(&node.get_node_id()));
                     node = self.tree.get_node_by_id(&id.expect("Error")).expect("WHAT IS HAPPENING HERE");
                 }
-
-
-                // if let Some(child_node) = node.get_children_ids().iter().find(|&id| id == ){
-                //     node = self.tree.get_node_by_id(child_node).unwrap();
-
-                //     let curr_duration = node.get_value().expect("").get_duration();
-
-                //     let mut x = StackNode::new(node.get_value().expect("error").get_name(), curr_duration).expect("Error");
-                //     x.increment(Duration::from_millis(delay_ms));
-                //     node.set_value(Some(x));
-                // }
-                // else{
-                //     //Node doesn't exist
-                //     let n = Some(StackNode::new(frame.name.clone(), Duration::from_secs(0)).expect("Error"));
-                //     let id = self.tree.add_node(Node::new_with_auto_id(n), Some(&node.get_node_id()));
-                //     node = self.tree.get_node_by_id(&id.expect("Error")).expect("WHAT IS HAPPENING HERE");
-                // }
             }
         }
 
@@ -92,9 +77,15 @@ impl Profiler{
     }
 
     pub fn run_sampling_loop(&mut self, delay_ms: u64) -> Result<(), anyhow::Error>{
+        let mut samples = 0;
         loop {
             match self.sample(delay_ms) {
-                Ok(_) => sleep(Duration::from_millis(delay_ms)),
+                Ok(_) => {
+                    sleep(Duration::from_millis(delay_ms));
+                    samples += 1;
+                    let root = self.tree.get_root_node();
+                    root.expect("error").set_value(Some(StackNode::new("Origin".to_owned(), Duration::from_millis(samples * delay_ms)).expect("error")));
+                }
                 Err(e) => {
                     eprintln!("Stopped sampling");
                     break;
@@ -124,3 +115,4 @@ fn retry_profiler_latch(pid: i32) -> PythonSpy{
     
     panic!("Failed to link to process after 5 retries");
 }
+

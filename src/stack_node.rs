@@ -1,5 +1,4 @@
 use anyhow::Error;
-use tree_ds::prelude::Tree;
 use std::{fmt, time::Duration};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
