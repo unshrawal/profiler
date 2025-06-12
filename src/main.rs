@@ -21,9 +21,9 @@ fn main(){
     //set.insert("func1".to_string());
     //set.insert("func2".to_string());
 
-    let mut profiler = Profiler::new(Some(set), Some(pid)).expect("Failed to create profiler");
-    let _ = profiler.run_sampling_loop(1);
-    let _ = child.wait();
+    //let mut profiler = Profiler::new(Some(set), "./test.py".to_owned()).expect("Failed to create profiler");
+    //let _ = profiler.run_sampling_loop(1);
+    //let _ = child.wait();
 
-    profiler.print_tree();
+    //profiler.print_tree();
 }

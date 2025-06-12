@@ -1,19 +1,26 @@
 use core::panic;
 use std::collections::{HashSet};
+use std::process::Command;
 use std::{thread::sleep, time::Duration};
 use py_spy::{PythonSpy};
 use tree_ds::prelude::{AutomatedId, Node, Tree};
 
 use crate::stack_node::StackNode;
+use pyo3::prelude::*;
 
+#[pyclass(unsendable)]
 pub(crate) struct Profiler{
     functions: HashSet<String>,
     process:py_spy::PythonSpy,
     tree : Tree<AutomatedId, StackNode>,
 }
+
+#[pymethods]
 impl Profiler{
-    pub fn new(functions: Option<HashSet<String>>, pid: Option<i32>) -> Result<Self, anyhow::Error> {
-        let pid = pid.unwrap_or(std::process::id() as i32);
+    #[new]
+    #[pyo3(text_signature = "(functions=None, pid=None)")]
+    pub fn new(functions: Option<HashSet<String>>, pid: Option<i32>) -> PyResult<Self> {
+        let pid = pid.expect("error");
         let functions = functions.unwrap_or(HashSet::<String>::new());
 
         let process = retry_profiler_latch(pid);
@@ -27,8 +34,9 @@ impl Profiler{
         })
     }
 
-    fn sample(&mut self, delay_ms: u64) -> Result<(), anyhow::Error>{
-        let traces = self.process.get_stack_traces()?;
+    fn sample(&mut self, delay_ms: u64) -> PyResult<()>{
+        let traces = self.process.get_stack_traces().expect("error");
+        println!("{:#?}", traces);
         let mut pruned_traces = Vec::<Vec<py_spy::Frame>>::new();
         for trace in &traces {
             let mut flag = false;
@@ -72,11 +80,11 @@ impl Profiler{
                 }
             }
         }
-
         Ok(())
     }
 
-    pub fn run_sampling_loop(&mut self, delay_ms: u64) -> Result<(), anyhow::Error>{
+    #[pyo3(text_signature = "($self, delay_ms)")]
+    pub fn run_sampling_loop(&mut self, delay_ms: u64) -> PyResult<()>{
         let mut samples = 0;
         loop {
             match self.sample(delay_ms) {
@@ -100,8 +108,17 @@ impl Profiler{
     }
 }
 
+#[pyfunction]
+fn spawn_process(filepath: String) -> PyResult<i32>{
+    let mut child = Command::new("python3")
+                                .arg(filepath)
+                                .spawn()
+                                .expect("Failed to start process");
+    Ok(child.id() as i32)
+}
+
 fn retry_profiler_latch(pid: i32) -> PythonSpy{
-    sleep(Duration::from_millis(20)); //IMPORTANT
+    sleep(Duration::from_millis(50)); //IMPORTANT
     let config = py_spy::Config::default();
     for _ in 1..5{
         match py_spy::PythonSpy::new(pid, &config) {
