@@ -3,7 +3,12 @@ name = "profiler"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "profiler"
+crate-type=["cdylib"]
+
 [dependencies]
 anyhow = "1.0.98"
 py-spy = "0.4.0"
+pyo3 = { version = "0.25.1", features = ["extension-module"]}
 tree-ds = { version = "0.1", features = ["auto_id"] }
