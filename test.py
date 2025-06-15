@@ -20,8 +20,14 @@ def combine():
         func3()
 
 #@PyProfiler
-def tCombine():
+def tCombine(var):
     combine()
 prof.tic()
-tCombine()
-prof.toc()
+tCombine(5)
+print(prof.toc())
+
+f = lambda : tCombine(5)
+print(prof.profile(f))
+
+with prof as p:
+    tCombine(5)

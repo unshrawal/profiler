@@ -26,11 +26,14 @@ impl PyProfiler {
         self.inner.toc().as_secs_f64()
     }
 
-    pub fn profile(&mut self, py: Python, func: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
+    pub fn profile(&mut self, py: Python, func: &Bound<'_, PyAny>) -> PyResult<(Py<PyAny>, f64)> {
         self.tic();
         let result = func.call0()?;
-        self.toc();
-        Ok(result.into())
+        let secs = self.toc();
+        Ok((
+            result.into(),
+            secs
+        ))
     }
 
     #[pyo3(signature = (*args, **kwargs))]
@@ -50,7 +53,23 @@ impl PyProfiler {
                                         .expect("error")
                                         .call(py, args, kwargs)?;
         let elapsed = self.inner.toc();
-        println!("Function {} took {:.3} seconds", name, elapsed.as_secs_f64());
+        println!("Function {} took {:.3} seconds to complete", name, elapsed.as_secs_f64());
         Ok(ret)
+    }
+
+    pub fn __enter__(mut slf: PyRefMut<'_, Self>) -> PyRefMut<'_, Self> {
+        slf.tic();
+        slf
+    }
+
+    pub fn __exit__(
+        &mut self,
+        _exc_type: Option<&Bound<'_, PyAny>>,
+        _exc_value: Option<&Bound<'_, PyAny>>,
+        _traceback: Option<&Bound<'_, PyAny>>,
+    ) -> PyResult<f64> {
+        let duration = self.toc();
+        println!("Context took {} seconds to complete", duration);
+        Ok(duration)
     }
 }
