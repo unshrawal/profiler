@@ -24,7 +24,7 @@ def tCombine(var):
     combine()
 prof.tic()
 tCombine(5)
-print(prof.toc())
+prof.toc()
 
 f = lambda : tCombine(5)
 print(prof.profile(f))

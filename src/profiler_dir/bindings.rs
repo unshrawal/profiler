@@ -5,16 +5,18 @@ use crate::profiler_dir::core::Profiler;
 pub struct PyProfiler {
     inner: Profiler,
     wraps: Option<Py<PyAny>>,
+    verbose: bool
 }
 
 #[pymethods]
 impl PyProfiler {
     #[new]
-    #[pyo3(signature = (wraps = None))]
-    pub fn new(wraps: Option<Py<PyAny>>) -> Self{
+    #[pyo3(signature = (wraps = None, verbose = true))]
+    pub fn new(wraps: Option<Py<PyAny>>, verbose: bool) -> Self{
         Self {
             inner: Profiler::new(),
-            wraps
+            wraps,
+            verbose
         }
     }
 
@@ -23,10 +25,14 @@ impl PyProfiler {
     }
 
     pub fn toc(&mut self) -> f64{
-        self.inner.toc().as_secs_f64()
+        let elapsed = self.inner.toc().as_secs_f64();
+        if self.verbose {
+            println!("{} seconds from the last tic", elapsed);
+        }
+        elapsed
     }
 
-    pub fn profile(&mut self, py: Python, func: &Bound<'_, PyAny>) -> PyResult<(Py<PyAny>, f64)> {
+    pub fn profile(&mut self, func: &Bound<'_, PyAny>) -> PyResult<(Py<PyAny>, f64)> {
         self.tic();
         let result = func.call0()?;
         let secs = self.toc();
@@ -53,12 +59,14 @@ impl PyProfiler {
                                         .expect("error")
                                         .call(py, args, kwargs)?;
         let elapsed = self.inner.toc();
-        println!("Function {} took {:.3} seconds to complete", name, elapsed.as_secs_f64());
+        if self.verbose {
+            println!("Function {} took {:.3} seconds to complete", name, elapsed.as_secs_f64());
+        }
         Ok(ret)
     }
 
     pub fn __enter__(mut slf: PyRefMut<'_, Self>) -> PyRefMut<'_, Self> {
-        slf.tic();
+        slf.inner.tic();
         slf
     }
 
@@ -68,8 +76,10 @@ impl PyProfiler {
         _exc_value: Option<&Bound<'_, PyAny>>,
         _traceback: Option<&Bound<'_, PyAny>>,
     ) -> PyResult<f64> {
-        let duration = self.toc();
-        println!("Context took {} seconds to complete", duration);
+        let duration = self.inner.toc().as_secs_f64();
+        if self.verbose {
+            println!("Context took {:.3} seconds to complete", duration);
+        }
         Ok(duration)
     }
 }
